@@ -169,11 +169,20 @@ class Objective(object):
         self.tr = np.trace(self.trA) - self.trB / self.denom
 
         # det
-        E = self.X + np.diag(self.sp_graph.q)
-        self.det = np.linalg.det(E) * o / self.denom
+        #E = self.X + np.diag(self.sp_graph.q)
+        #self.det = np.linalg.det(E) * o / self.denom
 
         # negative log-likelihood
-        nll = self.sp_graph.n_snps * (self.tr - np.log(self.det))
+        #nll = self.sp_graph.n_snps * (self.tr - np.log(self.det))
+        #return nll
+        
+        reg = 1e-3 # for numerical stability
+        E = self.X + np.diag(self.sp_graph.q) + reg * np.eye(self.X.shape[0])
+        sign, logdetE = np.linalg.slogdet(E)
+        if sign <= 0 or not np.isfinite(logdetE):
+            print(f"Bad matrix for slogdet: sign={sign}, logdet={logdetE}")
+            return 1e12
+        nll = self.sp_graph.n_snps * (self.tr - logdetE)
         return nll
 
     def loss(self):
