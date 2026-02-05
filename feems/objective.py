@@ -286,4 +286,11 @@ def comp_mats_full(obj, rtol=1e-10):
     one = np.ones((d, d)) / d
     fit_cov_full = Linv_full - one + Qinv_full
 
+    # recover original node order
+    permuted_idx = np.array(
+        [sp_graph.nodes[i]["permuted_idx"] for i in range(d)]
+    )
+    inv_perm = np.argsort(permuted_idx)
+    fit_cov_full = fit_cov_full[inv_perm, :][:, inv_perm]
+
     return fit_cov_full
