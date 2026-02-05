@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 import numpy as np
-
+from scipy.linalg import pinvh
 
 class Objective(object):
     def __init__(self, sp_graph):
@@ -248,4 +248,42 @@ def comp_mats(obj):
     emp_cov = frequencies_centered @ frequencies_centered.T / n_snps
     
     return fit_cov, inv_cov, emp_cov
-    
+
+
+def comp_mats_full(obj, rtol=1e-10):
+    """
+    Compute fitted covariance between ALL nodes (observed + unobserved)
+    using the full pseudo-inverse of the graph Laplacian.
+
+    Parameters
+    ----------
+    obj : Objective
+        FEEMS Objective object (must be already fitted)
+    rtol : float
+        Relative tolerance for pseudo-inverse
+
+    Returns
+    -------
+    fit_cov_full : (d, d) ndarray
+        Fitted covariance matrix between all nodes
+    """
+
+    sp_graph = obj.sp_graph
+    d = len(sp_graph)
+    o = sp_graph.n_observed_nodes
+
+    # ensure Laplacian is current
+    L = sp_graph.L.toarray()
+
+    # full pseudo-inverse of Laplacian
+    Linv_full = pinvh(L, rtol=rtol)
+
+    # construct Q^{-1} on full node set
+    Qinv_full = np.zeros((d, d))
+    Qinv_full[:o, :o] = sp_graph.q_inv_diag.toarray()
+
+    # fitted covariance
+    one = np.ones((d, d)) / d
+    fit_cov_full = Linv_full - one + Qinv_full
+
+    return fit_cov_full
