@@ -250,7 +250,7 @@ def comp_mats(obj):
     return fit_cov, inv_cov, emp_cov
 
 
-def comp_mats_full(obj, rtol=1e-10):
+def comp_mats_all_nodes(obj, rtol=1e-10):
     """
     Compute fitted covariance between ALL nodes (observed + unobserved)
     using the full pseudo-inverse of the graph Laplacian.
@@ -264,7 +264,7 @@ def comp_mats_full(obj, rtol=1e-10):
 
     Returns
     -------
-    fit_cov_full : (d, d) ndarray
+    fit_cov_all_nodes : (d, d) ndarray
         Fitted covariance matrix between all nodes
     """
 
@@ -276,21 +276,21 @@ def comp_mats_full(obj, rtol=1e-10):
     L = sp_graph.L.toarray()
 
     # full pseudo-inverse of Laplacian
-    Linv_full = pinvh(L, rtol=rtol)
+    Linv_all_nodes = pinvh(L, rtol=rtol)
 
     # construct Q^{-1} on full node set
-    Qinv_full = np.zeros((d, d))
-    Qinv_full[:o, :o] = sp_graph.q_inv_diag.toarray()
+    Qinv_all_nodes = np.zeros((d, d))
+    Qinv_all_nodes[:o, :o] = sp_graph.q_inv_diag.toarray()
 
     # fitted covariance
     one = np.ones((d, d)) / d
-    fit_cov_full = Linv_full - one + Qinv_full
+    fit_cov_all_nodes = Linv_all_nodes - one + Qinv_all_nodes
 
     # recover original node order
     permuted_idx = np.array(
         [sp_graph.nodes[i]["permuted_idx"] for i in range(d)]
     )
     inv_perm = np.argsort(permuted_idx)
-    fit_cov_full = fit_cov_full[inv_perm, :][:, inv_perm]
+    fit_cov_all_nodes = fit_cov_all_nodes[inv_perm, :][:, inv_perm]
 
-    return fit_cov_full
+    return fit_cov_all_nodes
