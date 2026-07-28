@@ -241,7 +241,7 @@ def comp_mats(obj):
     return fit_cov, inv_cov, emp_cov
 
 
-def comp_mats_all_nodes(obj, rtol=1e-10):
+def comp_mats_all_nodes(obj, rtol=1e-10, include_q=False):
     """
     Compute fitted covariance between ALL nodes (observed + unobserved)
     using the full pseudo-inverse of the graph Laplacian.
@@ -251,10 +251,13 @@ def comp_mats_all_nodes(obj, rtol=1e-10):
         FEEMS Objective object (must be already fitted)
     rtol : float
         Relative tolerance for pseudo-inverse
+    include_q : bool
+        If True, add the residual/sampling variance term Q^{-1} to the covariance
+        matrix for the observed nodes; reproduces the output of comp_mats
     Returns
     -------
     fit_cov_all_nodes : (d, d) ndarray
-        Fitted covariance matrix between all nodes
+        Fitted covariance matrix between all graph nodes
     """
 
     sp_graph = obj.sp_graph
@@ -265,20 +268,14 @@ def comp_mats_all_nodes(obj, rtol=1e-10):
     L = sp_graph.L.toarray()
 
     # full pseudo-inverse of Laplacian
-    Linv_all_nodes = pinvh(L, rtol=rtol)
+    fit_cov_all_nodes = pinvh(L, rtol=rtol)
 
-    # fitted covariance
-    one = np.ones((d, d)) / d
-    fit_cov_all_nodes = Linv_all_nodes - one
-
-    # Qinv is an extra variance term only available for the observed nodes.
-    # Adding it yields the same fitted covariances as in comp_mats.
-    # Here we're interested in the latent spatial covariance/distance induced
-    # by migration alone, so we omit it.
-    # To add it anyway:
-    #Qinv_all_nodes = np.zeros((d, d))
-    #Qinv_all_nodes[:o, :o] = sp_graph.q_inv_diag.toarray()
-    #fit_cov_all_nodes = Linv_all_nodes - one + Qinv_all_nodes
+    # Qinv is a residual sampling variance term only available for the observed nodes
+    # adding it yields the same fitted covariances as in comp_mats
+    if include_q:
+        Qinv_all_nodes = np.zeros((d, d))
+        Qinv_all_nodes[:o, :o] = sp_graph.q_inv_diag.toarray()
+        fit_cov_all_nodes = fit_cov_all_nodes + Qinv_all_nodes
 
     # recover original node order
     permuted_idx = np.array(
