@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 import numpy as np
-
+from scipy.linalg import pinvh
 
 class Objective(object):
     def __init__(self, sp_graph):
@@ -239,4 +239,52 @@ def comp_mats(obj):
     emp_cov = frequencies_centered @ frequencies_centered.T / n_snps
     
     return fit_cov, inv_cov, emp_cov
-    
+
+
+def comp_mats_all_nodes(obj, rtol=1e-10):
+    """
+    Compute fitted covariance between ALL nodes (observed + unobserved)
+    using the full pseudo-inverse of the graph Laplacian.
+    Parameters
+    ----------
+    obj : Objective
+        FEEMS Objective object (must be already fitted)
+    rtol : float
+        Relative tolerance for pseudo-inverse
+    Returns
+    -------
+    fit_cov_all_nodes : (d, d) ndarray
+        Fitted covariance matrix between all nodes
+    """
+
+    sp_graph = obj.sp_graph
+    d = len(sp_graph)
+    o = sp_graph.n_observed_nodes
+
+    # ensure Laplacian is current
+    L = sp_graph.L.toarray()
+
+    # full pseudo-inverse of Laplacian
+    Linv_all_nodes = pinvh(L, rtol=rtol)
+
+    # fitted covariance
+    one = np.ones((d, d)) / d
+    fit_cov_all_nodes = Linv_all_nodes - one
+
+    # Qinv is an extra variance term only available for the observed nodes.
+    # Adding it yields the same fitted covariances as in comp_mats.
+    # Here we're interested in the latent spatial covariance/distance induced
+    # by migration alone, so we omit it.
+    # To add it anyway:
+    #Qinv_all_nodes = np.zeros((d, d))
+    #Qinv_all_nodes[:o, :o] = sp_graph.q_inv_diag.toarray()
+    #fit_cov_all_nodes = Linv_all_nodes - one + Qinv_all_nodes
+
+    # recover original node order
+    permuted_idx = np.array(
+        [sp_graph.nodes[i]["permuted_idx"] for i in range(d)]
+    )
+    inv_perm = np.argsort(permuted_idx)
+    fit_cov_all_nodes = fit_cov_all_nodes[inv_perm, :][:, inv_perm]
+
+    return fit_cov_all_nodes
