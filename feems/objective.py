@@ -169,7 +169,7 @@ class Objective(object):
         self.tr = np.trace(self.trA) - self.trB / self.denom
 
         E = self.X + np.diag(self.sp_graph.q)
-        logdetE = np.linalg.slogdet(E)
+        sign, logdetE = np.linalg.slogdet(E)
         logdet = logdetE + np.log(o) - np.log(self.denom)
         nll = self.sp_graph.n_snps * (self.tr - logdet)
         return nll
